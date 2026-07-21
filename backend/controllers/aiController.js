@@ -63,10 +63,6 @@ export const chat = async (req, res) => {
       parsed = { reply: response, itinerary: null };
     }
 
-    if (parsed.itinerary) {
-      chatHistories[sid] = [];
-    }
-
     // 8. Respond back to your frontend widget
     res.json({
       reply: parsed.reply || response,

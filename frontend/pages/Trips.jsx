@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import { addTrip, createTripThunk } from "../src/store/slices/tripSlice";
 import Navbar from "../src/components/Navbar";
 import AIChatWidget from "../src/components/AIChatWidget";
@@ -578,7 +578,146 @@ function generateDashboardData(dest, itinerary, fromDate) {
   };
 }
 
+const todayStr = new Date().toISOString().split("T")[0];
+
+function generateItineraryForDates(destination, dateFrom, dateTo, travellers) {
+  const destName = destination.trim() || "Destination";
+  const key = destName.toLowerCase();
+  const matchedKey = Object.keys(sampleItineraries).find((k) => key.includes(k));
+  const matchedSample = matchedKey ? sampleItineraries[matchedKey] : null;
+
+  let totalDays = 1;
+  let startDate = null;
+
+  if (dateFrom && dateTo) {
+    const d1 = new Date(dateFrom);
+    const d2 = new Date(dateTo);
+    const diffTime = d2 - d1;
+    const calcDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    if (calcDays > 0) totalDays = calcDays;
+    startDate = d1;
+  } else if (matchedSample) {
+    totalDays = matchedSample.days.length;
+  }
+
+  const generatedDays = [];
+
+  const activityTemplates = [
+    {
+      title: "Arrival & City Overview",
+      morning: [
+        { name: `Arrive in ${destName}`, type: "transport", duration: "1.5 hrs" },
+        { name: "Hotel check-in & freshen up", type: "hotel", duration: "1 hr" },
+      ],
+      afternoon: [
+        { name: "Explore central landmarks", type: "sightseeing", duration: "2.5 hrs" },
+        { name: "Lunch at local café", type: "food", duration: "1 hr" },
+      ],
+      evening: [
+        { name: "Sunset viewpoint & walk", type: "sightseeing", duration: "1.5 hrs" },
+        { name: "Welcome dinner at top restaurant", type: "food", duration: "1.5 hrs" },
+      ],
+    },
+    {
+      title: "Culture & Landmark Tour",
+      morning: [
+        { name: "Guided museum & heritage tour", type: "sightseeing", duration: "3 hrs" },
+      ],
+      afternoon: [
+        { name: "Traditional food experience", type: "food", duration: "1.5 hrs" },
+        { name: "Stroll through historic district", type: "sightseeing", duration: "2 hrs" },
+      ],
+      evening: [
+        { name: "Local market explore", type: "activity", duration: "1.5 hrs" },
+        { name: "Dinner & night walk", type: "food", duration: "2 hrs" },
+      ],
+    },
+    {
+      title: "Nature & Local Experiences",
+      morning: [
+        { name: "Morning scenic park walk", type: "activity", duration: "2 hrs" },
+        { name: "Breakfast at a famous spot", type: "food", duration: "1 hr" },
+      ],
+      afternoon: [
+        { name: "Visit key tourist attraction", type: "sightseeing", duration: "2.5 hrs" },
+        { name: "Artisanal lunch spot", type: "food", duration: "1 hr" },
+      ],
+      evening: [
+        { name: "River or scenic boat cruise", type: "activity", duration: "1.5 hrs" },
+        { name: "Gourmet dinner experience", type: "food", duration: "1.5 hrs" },
+      ],
+    },
+    {
+      title: "Shopping & Local Cuisine",
+      morning: [
+        { name: "Morning market & souvenir shopping", type: "activity", duration: "2 hrs" },
+      ],
+      afternoon: [
+        { name: "Food tasting tour", type: "food", duration: "2.5 hrs" },
+        { name: "Architectural & photo spots", type: "sightseeing", duration: "2 hrs" },
+      ],
+      evening: [
+        { name: "Rooftop view & drinks", type: "activity", duration: "1.5 hrs" },
+        { name: "Special dinner spot", type: "food", duration: "2 hrs" },
+      ],
+    },
+    {
+      title: "Relaxation & Departure",
+      morning: [
+        { name: "Leisurely breakfast & coffee", type: "food", duration: "1 hr" },
+        { name: "Last-minute souvenir shopping", type: "activity", duration: "1.5 hrs" },
+      ],
+      afternoon: [
+        { name: "Hotel check-out", type: "hotel", duration: "30 min" },
+        { name: "Transfer to airport / station", type: "transport", duration: "1.5 hrs" },
+      ],
+    },
+  ];
+
+  for (let i = 0; i < totalDays; i++) {
+    let dateStr = `Day ${i + 1}`;
+    if (startDate) {
+      const curDate = new Date(startDate);
+      curDate.setDate(startDate.getDate() + i);
+      dateStr = curDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+
+    if (matchedSample && matchedSample.days[i]) {
+      generatedDays.push({
+        ...matchedSample.days[i],
+        day: i + 1,
+        date: dateStr,
+      });
+    } else {
+      const tpl = activityTemplates[i % activityTemplates.length];
+      generatedDays.push({
+        day: i + 1,
+        date: dateStr,
+        title: `${tpl.title}`,
+        blocks: [
+          { time: "Morning", icon: "🌅", activities: tpl.morning },
+          { time: "Afternoon", icon: "☀️", activities: tpl.afternoon },
+          { time: "Evening", icon: "🌙", activities: tpl.evening },
+        ],
+      });
+    }
+  }
+
+  return {
+    destination: destName,
+    tripDuration: `${totalDays} Day${totalDays > 1 ? "s" : ""}`,
+    travellers: parseInt(travellers) || 1,
+    days: generatedDays,
+  };
+}
+
 function Trips() {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [search, setSearch] = useState({
     from: "",
     destination: "",
@@ -593,63 +732,60 @@ function Trips() {
   const { previousTrips } = useSelector((state) => state.trips);
   const dispatch = useDispatch();
 
+  useEffect(() => {
+    if (location.state?.generatedItinerary) {
+      const genItinerary = location.state.generatedItinerary;
+      setItinerary(genItinerary);
+      setActiveTab("itinerary");
+      setTripAdded(false);
+      if (genItinerary.destination) {
+        setSearch((prev) => ({ ...prev, destination: genItinerary.destination }));
+      }
+      setTimeout(() => {
+        window.scrollTo({ top: 350, behavior: "smooth" });
+      }, 100);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (location.state?.generatedItinerary) return;
+    const destParam = searchParams.get("destination");
+    if (destParam) {
+      const destName = decodeURIComponent(destParam);
+      setSearch((prev) => ({ ...prev, destination: destName }));
+      const generated = generateItineraryForDates(
+        destName,
+        search.dateFrom,
+        search.dateTo,
+        search.travellers
+      );
+      setItinerary(generated);
+    }
+  }, [searchParams]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setSearch((prev) => ({ ...prev, [name]: value }));
+    setSearch((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "dateFrom" && updated.dateTo && updated.dateTo < value) {
+        updated.dateTo = value;
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!search.destination.trim()) return;
 
-    const key = search.destination.trim().toLowerCase();
-    const matched = Object.keys(sampleItineraries).find((k) =>
-      key.includes(k)
+    const generated = generateItineraryForDates(
+      search.destination,
+      search.dateFrom,
+      search.dateTo,
+      search.travellers
     );
 
-    if (matched) {
-      setItinerary(sampleItineraries[matched]);
-    } else {
-      setItinerary({
-        destination: search.destination,
-        tripDuration: `${search.dateFrom && search.dateTo ? "Trip" : "Custom"} Itinerary`,
-        travellers: search.travellers,
-        days: [
-          {
-            day: 1,
-            date: search.dateFrom || "Day 1",
-            title: "Explore " + search.destination,
-            blocks: [
-              {
-                time: "Morning",
-                icon: "🌅",
-                activities: [
-                  { name: "Arrive & settle in", type: "transport", duration: "1 hr" },
-                  { name: "Explore the local area", type: "sightseeing", duration: "2 hrs" },
-                ],
-              },
-              {
-                time: "Afternoon",
-                icon: "☀️",
-                activities: [
-                  { name: "Lunch at a local restaurant", type: "food", duration: "1 hr" },
-                  { name: "Visit popular landmarks", type: "sightseeing", duration: "2 hrs" },
-                ],
-              },
-              {
-                time: "Evening",
-                icon: "🌙",
-                activities: [
-                  { name: "Sunset viewpoint", type: "sightseeing", duration: "1 hr" },
-                  { name: "Dinner at a recommended spot", type: "food", duration: "1.5 hrs" },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    }
-
+    setItinerary(generated);
     setActiveTab("itinerary");
     setTripAdded(false);
   };
@@ -661,8 +797,8 @@ function Trips() {
     const tripPayload = {
       from: search.from,
       destination: itinerary.destination,
-      dateFrom: search.dateFrom || "2026-10-01",
-      dateTo: search.dateTo || "2026-10-05",
+      dateFrom: search.dateFrom || todayStr,
+      dateTo: search.dateTo || todayStr,
       travellers: itinerary.travellers,
       dates: itinerary.tripDuration,
       itinerary,
@@ -724,12 +860,13 @@ function Trips() {
                 htmlFor="dateFrom"
                 className="block text-xs font-medium text-slate-400 mb-1"
               >
-                From
+                From Date
               </label>
               <input
                 id="dateFrom"
                 name="dateFrom"
                 type="date"
+                min={todayStr}
                 value={search.dateFrom}
                 onChange={handleChange}
                 className="w-full rounded-lg bg-slate-700 border border-slate-600 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition [color-scheme:dark]"
@@ -741,12 +878,13 @@ function Trips() {
                 htmlFor="dateTo"
                 className="block text-xs font-medium text-slate-400 mb-1"
               >
-                To
+                To Date
               </label>
               <input
                 id="dateTo"
                 name="dateTo"
                 type="date"
+                min={search.dateFrom || todayStr}
                 value={search.dateTo}
                 onChange={handleChange}
                 className="w-full rounded-lg bg-slate-700 border border-slate-600 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition [color-scheme:dark]"
@@ -780,6 +918,27 @@ function Trips() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* AI Customization Notice Banner */}
+      <div className="bg-indigo-950/70 border-b border-indigo-500/30 px-6 py-3">
+        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🤖</span>
+            <p className="text-xs sm:text-sm text-indigo-200">
+              <span className="font-semibold text-white">Need a more customized itinerary?</span>{" "}
+              Use our AI Assistant to tailor your activities, flight details, budget, and dining preferences!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat"))}
+            className="shrink-0 px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold shadow-md transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>✨</span>
+            <span>Use AI Custom Planner</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs + Content */}

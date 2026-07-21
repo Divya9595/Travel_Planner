@@ -1,15 +1,31 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "../store/api";
 
+const DEFAULT_MESSAGES = [
+  {
+    role: "assistant",
+    content:
+      "👋 Hi! I'm your AI travel planner. Tell me where you'd like to go, how many days, and what you enjoy — I'll create a personalized itinerary for you!",
+  },
+];
+
 function AIChatWidget({ onItineraryGenerated }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content:
-        "👋 Hi! I'm your AI travel planner. Tell me where you'd like to go, how many days, and what you enjoy — I'll create a personalized itinerary for you!",
-    },
-  ]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ai_chat_history");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error("Error reading chat history:", e);
+    }
+    return DEFAULT_MESSAGES;
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -20,12 +36,32 @@ function AIChatWidget({ onItineraryGenerated }) {
   };
 
   useEffect(() => {
+    try {
+      localStorage.setItem("ai_chat_history", JSON.stringify(messages));
+    } catch (e) {
+      console.error("Error saving chat history:", e);
+    }
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("open-ai-chat", handleOpen);
+    return () => window.removeEventListener("open-ai-chat", handleOpen);
+  }, []);
+
+  useEffect(() => {
     if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
+
+  const handleClearChat = () => {
+    setMessages(DEFAULT_MESSAGES);
+    try {
+      localStorage.removeItem("ai_chat_history");
+    } catch (e) {
+      console.error("Error clearing chat history:", e);
+    }
+  };
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -45,8 +81,13 @@ function AIChatWidget({ onItineraryGenerated }) {
       const assistantMsg = { role: "assistant", content: data.reply };
       setMessages((prev) => [...prev, assistantMsg]);
 
-      if (data.itinerary && onItineraryGenerated) {
-        onItineraryGenerated(data.itinerary);
+      if (data.itinerary) {
+        if (onItineraryGenerated) {
+          onItineraryGenerated(data.itinerary);
+        }
+        navigate("/dashboard/trips", {
+          state: { generatedItinerary: data.itinerary },
+        });
       }
     } catch {
       setMessages((prev) => [
@@ -110,12 +151,21 @@ function AIChatWidget({ onItineraryGenerated }) {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-indigo-200 hover:text-white transition text-lg cursor-pointer"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleClearChat}
+                title="Clear Chat History"
+                className="text-indigo-200 hover:text-white transition text-xs font-medium px-2 py-1 rounded bg-indigo-700/50 hover:bg-indigo-700 cursor-pointer"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-indigo-200 hover:text-white transition text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
