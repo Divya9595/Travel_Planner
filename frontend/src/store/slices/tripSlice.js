@@ -28,6 +28,15 @@ export const deleteTripThunk = createAsyncThunk("trips/deleteTrip", async (tripI
   }
 });
 
+export const updateTripThunk = createAsyncThunk("trips/updateTrip", async ({ tripId, updates }, { rejectWithValue }) => {
+  try {
+    const { data } = await api.put(`/trips/${tripId}`, updates);
+    return data;
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || "Failed to update trip");
+  }
+});
+
 const initialState = {
   activeTrip: null,
   previousTrips: [],
@@ -70,20 +79,6 @@ const tripSlice = createSlice({
         (t) => t._id !== action.payload
       );
     },
-    toggleTripTodo: (state, action) => {
-      const { tripId, index } = action.payload;
-      const trip = state.previousTrips.find((t) => t._id === tripId);
-      if (trip?.todoList?.[index] !== undefined) {
-        trip.todoList[index].done = !trip.todoList[index].done;
-      }
-    },
-    toggleTripPacked: (state, action) => {
-      const { tripId, index } = action.payload;
-      const trip = state.previousTrips.find((t) => t._id === tripId);
-      if (trip?.packing?.[index] !== undefined) {
-        trip.packing[index].packed = !trip.packing[index].packed;
-      }
-    },
   },
   extraReducers: (builder) => {
     builder
@@ -106,6 +101,10 @@ const tripSlice = createSlice({
         state.previousTrips = state.previousTrips.filter(
           (t) => t._id !== action.payload
         );
+      })
+      .addCase(updateTripThunk.fulfilled, (state, action) => {
+        const idx = state.previousTrips.findIndex((t) => t._id === action.payload._id);
+        if (idx !== -1) state.previousTrips[idx] = action.payload;
       });
   },
 });
@@ -118,7 +117,5 @@ export const {
   setPreviousTrips,
   addTrip,
   removeTrip,
-  toggleTripTodo,
-  toggleTripPacked,
 } = tripSlice.actions;
 export default tripSlice.reducer;

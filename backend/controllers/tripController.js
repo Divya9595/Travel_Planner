@@ -66,6 +66,23 @@ export const getTrip = async (req, res) => {
   }
 };
 
+export const updateTrip = async (req, res) => {
+  try {
+    const { packing, todoList, reminders } = req.body;
+    const trip = await Trip.findOne({ _id: req.params.id, user: req.user.id });
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+    if (packing !== undefined) trip.packing = packing;
+    if (todoList !== undefined) trip.todoList = todoList;
+    if (reminders !== undefined) trip.reminders = reminders;
+    const updated = await trip.save();
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const deleteTrip = async (req, res) => {
   try {
     const trip = await Trip.findOneAndDelete({ _id: req.params.id, user: req.user.id });
