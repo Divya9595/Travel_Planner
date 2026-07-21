@@ -2,7 +2,21 @@ import Trip from '../models/Trip.js';
 
 export const createTrip = async (req, res) => {
   try {
-    const { from, destination, dateFrom, dateTo, travellers } = req.body;
+    const {
+      from,
+      destination,
+      dateFrom,
+      dateTo,
+      travellers,
+      dates,
+      weather,
+      attractions,
+      packing,
+      todoList,
+      transport,
+      reminders,
+      itinerary,
+    } = req.body;
 
     if (!destination || !destination.trim()) {
       return res.status(400).json({ message: 'Destination is required' });
@@ -15,6 +29,14 @@ export const createTrip = async (req, res) => {
       dateFrom,
       dateTo,
       travellers,
+      dates,
+      weather,
+      attractions,
+      packing,
+      todoList,
+      transport,
+      reminders,
+      itinerary,
     });
 
     res.status(201).json(trip);

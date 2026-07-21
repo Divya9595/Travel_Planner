@@ -32,6 +32,44 @@ const tripSchema = new mongoose.Schema(
       default: 1,
       min: [1, 'At least 1 traveller required'],
     },
+    dates: {
+      type: String,
+      default: '',
+    },
+    weather: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    attractions: [
+      {
+        type: String,
+      },
+    ],
+    packing: [
+      {
+        item: { type: String },
+        icon: { type: String },
+        packed: { type: Boolean, default: false },
+      },
+    ],
+    todoList: [
+      {
+        task: { type: String },
+        done: { type: Boolean, default: false },
+      },
+    ],
+    transport: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    reminders: [
+      {
+        text: { type: String },
+        icon: { type: String },
+        urgent: { type: Boolean, default: false },
+      },
+    ],
+    itinerary: {
+      type: mongoose.Schema.Types.Mixed,
+    },
   },
   { timestamps: true }
 );
