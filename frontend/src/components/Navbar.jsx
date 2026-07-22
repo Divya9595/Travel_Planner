@@ -40,19 +40,23 @@ function Navbar({ publicMode = false }) {
 
                         {user && !publicMode ? (
                             <>
-                                <NavLink
-                                    to="/dashboard"
-                                    className={navLinkClass}
-                                >
-                                    Dashboard
-                                </NavLink>
+                                {user?.role === "admin" ? null : (
+                                    <>
+                                        <NavLink
+                                            to="/dashboard"
+                                            className={navLinkClass}
+                                        >
+                                            Dashboard
+                                        </NavLink>
 
-                                <NavLink
-                                    to="/dashboard/trips"
-                                    className={navLinkClass}
-                                >
-                                    Trips
-                                </NavLink>
+                                        <NavLink
+                                            to="/dashboard/trips"
+                                            className={navLinkClass}
+                                        >
+                                            Trips
+                                        </NavLink>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <>
@@ -129,21 +133,25 @@ function Navbar({ publicMode = false }) {
 
                             {user && !publicMode ? (
                                 <>
-                                    <NavLink
-                                        to="/dashboard"
-                                        className={navLinkClass}
-                                        onClick={() => setIsOpen(false)}
-                                    >
-                                        Dashboard
-                                    </NavLink>
+                                    {user?.role === "admin" ? null : (
+                                        <>
+                                            <NavLink
+                                                to="/dashboard"
+                                                className={navLinkClass}
+                                                onClick={() => setIsOpen(false)}
+                                            >
+                                                Dashboard
+                                            </NavLink>
 
-                                    <NavLink
-                                        to="/dashboard/trips"
-                                        className={navLinkClass}
-                                        onClick={() => setIsOpen(false)}
-                                    >
-                                        Trips
-                                    </NavLink>
+                                            <NavLink
+                                                to="/dashboard/trips"
+                                                className={navLinkClass}
+                                                onClick={() => setIsOpen(false)}
+                                            >
+                                                Trips
+                                            </NavLink>
+                                        </>
+                                    )}
                                 </>
                             ) : (
                                 <>

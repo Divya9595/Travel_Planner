@@ -4,8 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar";
 import AIChatWidget from "../src/components/AIChatWidget";
 import { fetchTrips } from "../src/store/slices/tripSlice";
+import api from "../src/store/api";
 
-const popularDestinations = [
+const DEFAULT_POPULAR_DESTINATIONS = [
   {
     id: "paris",
     name: "Paris, France",
@@ -68,7 +69,7 @@ const popularDestinations = [
   },
 ];
 
-const aiFeatures = [
+const DEFAULT_AI_FEATURES = [
   {
     icon: "✨",
     title: "Instant Personalized Itineraries",
@@ -105,10 +106,28 @@ function Home() {
   const [dateModal, setDateModal] = useState(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [popularDestinations, setPopularDestinations] = useState(DEFAULT_POPULAR_DESTINATIONS);
+  const [aiFeatures, setAiFeatures] = useState(DEFAULT_AI_FEATURES);
 
   useEffect(() => {
     dispatch(fetchTrips());
   }, [dispatch]);
+
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const [destRes, featRes] = await Promise.allSettled([
+          api.get("/content/home.popularDestinations"),
+          api.get("/content/home.aiFeatures"),
+        ]);
+        if (destRes.status === "fulfilled") setPopularDestinations(destRes.value.data.value);
+        if (featRes.status === "fulfilled") setAiFeatures(featRes.value.data.value);
+      } catch {
+        // keep defaults
+      }
+    };
+    loadContent();
+  }, []);
 
   const handleCardClick = (dest) => {
     setDateModal(dest);

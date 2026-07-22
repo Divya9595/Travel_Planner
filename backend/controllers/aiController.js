@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TRAVEL_PLANNER_PROMPT } from "../config/prompts.js";
+import Content from "../models/Content.js";
 
 
 const chatHistories = {};
@@ -35,10 +36,21 @@ export const chat = async (req, res) => {
     const sid = sessionId || "default";
     const history = getChatHistory(sid);
 
+    // Fetch prompt from DB (fallback to static)
+    let systemPrompt = TRAVEL_PLANNER_PROMPT;
+    try {
+      const dbPrompt = await Content.findOne({ section: "ai.prompt" });
+      if (dbPrompt && dbPrompt.value) {
+        systemPrompt = typeof dbPrompt.value === "string" ? dbPrompt.value : dbPrompt.value.text || TRAVEL_PLANNER_PROMPT;
+      }
+    } catch (e) {
+      // use static fallback
+    }
+
     // 4. Start the chat using the correct structural object layout for systemInstruction
     const chatSession = model.startChat({
       systemInstruction: {
-        parts: [{ text: TRAVEL_PLANNER_PROMPT }]
+        parts: [{ text: systemPrompt }]
       }, 
       history: history,
     });

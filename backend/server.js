@@ -7,7 +7,10 @@ import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
 import tripRoutes from './routes/tripRoutes.js'
-connectDB();
+import contentRoutes from './routes/contentRoutes.js'
+import { seedContent } from './config/seedContent.js'
+
+connectDB().then(() => seedContent());
 
 const app = express();
 
@@ -15,13 +18,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Base Route
-// app.get('/api/status', (req, res) => {
-//   res.status(200).json({ status: 'active', message: 'Travel API operational' });
-// });
+// Routes
 app.use("/api/auth", authRoutes)
 app.use("/api/ai", aiRoutes)
 app.use("/api/trips", tripRoutes)
+app.use("/api/content", contentRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

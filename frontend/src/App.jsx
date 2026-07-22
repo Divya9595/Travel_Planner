@@ -8,6 +8,7 @@ import About from "../pages/About";
 import Contact from "../pages/Contact";
 import Trips from "../pages/Trips";
 import TripDetails from "../pages/TripDetails";
+import AdminPanel from "../pages/AdminPanel";
 
 import ProtectedRoute from "../src/components/ProtectedRoute";
 
@@ -27,7 +28,7 @@ function App() {
                 <Route
                     path="/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute adminRedirect>
                             <Home />
                         </ProtectedRoute>
                     }
@@ -35,7 +36,7 @@ function App() {
                 <Route
                     path="/dashboard/trips"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute adminRedirect>
                             <Trips />
                         </ProtectedRoute>
                     }
@@ -45,6 +46,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <TripDetails />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/dashboard/admin"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <AdminPanel />
                         </ProtectedRoute>
                     }
                 />

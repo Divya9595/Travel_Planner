@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema(
         trim: true,
         minlength: [2, "Country name must be at least 2 characters"],
         maxlength: [56, "Country name cannot exceed 56 characters"]
+    },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
     }
   },
   {

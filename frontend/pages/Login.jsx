@@ -7,7 +7,7 @@ function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { token, loading, error } = useSelector((state) => state.auth);
+  const { token, loading, error, user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -25,8 +25,8 @@ function Login() {
     e.preventDefault();
 
     try {
-      await dispatch(loginUser(formData)).unwrap();
-      navigate("/dashboard");
+      const result = await dispatch(loginUser(formData)).unwrap();
+      navigate(result.user?.role === "admin" ? "/dashboard/admin" : "/dashboard");
     } catch (error) {
       console.error(error);
     }
@@ -34,9 +34,9 @@ function Login() {
 
   useEffect(() => {
     if (token) {
-      navigate("/dashboard");
+      navigate(user?.role === "admin" ? "/dashboard/admin" : "/dashboard");
     }
-  }, [token, navigate]);
+  }, [token, navigate, user]);
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center px-6 py-12 lg:px-8">

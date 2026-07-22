@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../src/components/Navbar";
 import Footer from "../src/components/Footer";
+import api from "../src/store/api";
 
-const features = [
+const DEFAULT_FEATURES = [
   {
     icon: "🤖",
     title: "AI Travel Planner",
@@ -53,7 +55,7 @@ const features = [
   },
 ];
 
-const steps = [
+const DEFAULT_STEPS = [
   {
     step: "1",
     title: "Search Your Destination",
@@ -77,7 +79,7 @@ const steps = [
   },
 ];
 
-const destinations = [
+const DEFAULT_DESTINATIONS = [
   {
     name: "Bali, Indonesia",
     type: "Beach & Culture",
@@ -105,6 +107,28 @@ const destinations = [
 ];
 
 function Index() {
+  const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  const [steps, setSteps] = useState(DEFAULT_STEPS);
+  const [destinations, setDestinations] = useState(DEFAULT_DESTINATIONS);
+
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const [fRes, sRes, dRes] = await Promise.allSettled([
+          api.get("/content/landing.features"),
+          api.get("/content/landing.steps"),
+          api.get("/content/landing.destinations"),
+        ]);
+        if (fRes.status === "fulfilled") setFeatures(fRes.value.data.value);
+        if (sRes.status === "fulfilled") setSteps(sRes.value.data.value);
+        if (dRes.status === "fulfilled") setDestinations(dRes.value.data.value);
+      } catch {
+        // keep defaults
+      }
+    };
+    loadContent();
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
       <Navbar />

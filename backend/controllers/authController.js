@@ -24,7 +24,7 @@ export const register = async (req, res) => {
         });
 
         const token = jsonwebtoken.sign(
-            { id: user._id },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "30d" }
         );
@@ -37,7 +37,8 @@ export const register = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phoneNumber: user.phoneNumber,
-                country: user.country
+                country: user.country,
+                role: user.role,
             }
         });
     } catch(error) {
@@ -76,7 +77,7 @@ export const login = async (req, res) => {
 
         // Generate JWT
         const token = jsonwebtoken.sign(
-            { id: user._id },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "30d" }
         );
@@ -90,11 +91,21 @@ export const login = async (req, res) => {
                 email: user.email,
                 phoneNumber: user.phoneNumber,
                 country: user.country,
+                role: user.role,
             },
         });
     } catch (error) {
         res.status(500).json({
             message: error.message,
         });
+    }
+};
+
+export const getUsers = async (req, res) => {
+    try {
+        const users = await User.find().select("-password").sort({ createdAt: -1 });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };

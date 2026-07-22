@@ -2,18 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../store/api";
 
-const DEFAULT_MESSAGES = [
-  {
-    role: "assistant",
-    content:
-      "👋 Hi! I'm your AI travel planner. Tell me where you'd like to go, how many days, and what you enjoy — I'll create a personalized itinerary for you!",
-  },
-];
+const DEFAULT_GREETING = "👋 Hi! I'm your AI travel planner. Tell me where you'd like to go, how many days, and what you enjoy — I'll create a personalized itinerary for you!";
 
 function AIChatWidget({ onItineraryGenerated }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [greeting, setGreeting] = useState(DEFAULT_GREETING);
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem("ai_chat_history");
@@ -24,7 +19,7 @@ function AIChatWidget({ onItineraryGenerated }) {
     } catch (e) {
       console.error("Error reading chat history:", e);
     }
-    return DEFAULT_MESSAGES;
+    return [{ role: "assistant", content: DEFAULT_GREETING }];
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,8 +49,23 @@ function AIChatWidget({ onItineraryGenerated }) {
     if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
 
+  useEffect(() => {
+    const loadGreeting = async () => {
+      try {
+        const res = await api.get("/content/ai.greeting");
+        if (res.data?.value) {
+          const text = typeof res.data.value === "string" ? res.data.value : res.data.value.text;
+          if (text) setGreeting(text);
+        }
+      } catch {
+        // keep default
+      }
+    };
+    loadGreeting();
+  }, []);
+
   const handleClearChat = () => {
-    setMessages(DEFAULT_MESSAGES);
+    setMessages([{ role: "assistant", content: greeting }]);
     try {
       localStorage.removeItem("ai_chat_history");
     } catch (e) {
