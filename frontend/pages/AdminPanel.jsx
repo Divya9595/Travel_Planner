@@ -7,6 +7,8 @@ import api from "../src/store/api";
 const TABS = [
   { id: "popular-dest", label: "Popular Destinations", icon: "🗺️" },
   { id: "ai-features", label: "AI Features", icon: "✨" },
+  { id: "sample-itineraries", label: "Sample Itineraries", icon: "📝" },
+  { id: "destination-data", label: "Destination Data", icon: "🌤️" },
   { id: "landing-features", label: "Landing Features", icon: "🧩" },
   { id: "landing-steps", label: "How It Works", icon: "📋" },
   { id: "landing-dest", label: "Landing Destinations", icon: "🌍" },
@@ -28,6 +30,8 @@ function AdminPanel() {
   const [landingFeatures, setLandingFeatures] = useState([]);
   const [landingSteps, setLandingSteps] = useState([]);
   const [landingDest, setLandingDest] = useState([]);
+  const [sampleItineraries, setSampleItineraries] = useState("{}");
+  const [destinationData, setDestinationData] = useState("{}");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGreeting, setAiGreeting] = useState("");
   const [users, setUsers] = useState([]);
@@ -50,13 +54,15 @@ function AdminPanel() {
   const loadAllContent = async () => {
     setLoading(true);
     try {
-      const [destRes, aiFeatRes, lfRes, lsRes, ldRes, promptRes, greetRes, usersRes] =
+      const [destRes, aiFeatRes, lfRes, lsRes, ldRes, siRes, ddRes, promptRes, greetRes, usersRes] =
         await Promise.allSettled([
           api.get("/content/home.popularDestinations"),
           api.get("/content/home.aiFeatures"),
           api.get("/content/landing.features"),
           api.get("/content/landing.steps"),
           api.get("/content/landing.destinations"),
+          api.get("/content/home.sampleItineraries"),
+          api.get("/content/home.destinationData"),
           api.get("/content/ai.prompt"),
           api.get("/content/ai.greeting"),
           api.get("/auth/users"),
@@ -67,6 +73,8 @@ function AdminPanel() {
       if (lfRes.status === "fulfilled") setLandingFeatures(lfRes.value.data.value || []);
       if (lsRes.status === "fulfilled") setLandingSteps(lsRes.value.data.value || []);
       if (ldRes.status === "fulfilled") setLandingDest(ldRes.value.data.value || []);
+      if (siRes.status === "fulfilled") setSampleItineraries(JSON.stringify(siRes.value.data.value || {}, null, 2));
+      if (ddRes.status === "fulfilled") setDestinationData(JSON.stringify(ddRes.value.data.value || {}, null, 2));
       if (promptRes.status === "fulfilled") {
         const val = promptRes.value.data.value;
         setAiPrompt(typeof val === "string" ? val : val?.text || "");
@@ -179,6 +187,34 @@ function AdminPanel() {
                         { key: "title", label: "Title", type: "text" },
                         { key: "description", label: "Description", type: "textarea" },
                       ]}
+                    />
+                  )}
+
+                  {activeTab === "sample-itineraries" && (
+                    <JsonSection
+                      title="Sample Itineraries"
+                      description="Pre-built day-by-day itineraries for popular destinations. Used when users select a destination from the Home page. Keys: paris, tokyo, bali, etc."
+                      value={sampleItineraries}
+                      setValue={setSampleItineraries}
+                      onSave={() => {
+                        try { saveSection("home.sampleItineraries", JSON.parse(sampleItineraries)); }
+                        catch { showToast("Invalid JSON", "error"); }
+                      }}
+                      saving={saving}
+                    />
+                  )}
+
+                  {activeTab === "destination-data" && (
+                    <JsonSection
+                      title="Destination Data"
+                      description="Weather, attractions, packing lists, and transport data for each destination. Keys: paris, tokyo, bali, etc."
+                      value={destinationData}
+                      setValue={setDestinationData}
+                      onSave={() => {
+                        try { saveSection("home.destinationData", JSON.parse(destinationData)); }
+                        catch { showToast("Invalid JSON", "error"); }
+                      }}
+                      saving={saving}
                     />
                   )}
 
@@ -428,6 +464,50 @@ function ArraySection({ title, description, items, setItems, onSave, saving, fie
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function JsonSection({ title, description, value, setValue, onSave, saving }) {
+  const [error, setError] = useState(null);
+
+  const handleChange = (val) => {
+    setValue(val);
+    try {
+      JSON.parse(val);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  return (
+    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          <p className="text-slate-400 text-sm mt-0.5">{description}</p>
+        </div>
+        <button
+          onClick={onSave}
+          disabled={saving || !!error}
+          className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-400 transition cursor-pointer disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+      {error && (
+        <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400 font-mono">
+          JSON Error: {error}
+        </div>
+      )}
+      <textarea
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        rows={30}
+        spellCheck={false}
+        className="w-full rounded-lg bg-slate-900 border border-slate-600 px-4 py-3 text-sm text-green-400 font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+      />
     </div>
   );
 }
