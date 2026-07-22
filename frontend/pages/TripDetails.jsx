@@ -22,8 +22,10 @@ function TripDetails() {
   const [editingPackingIdx, setEditingPackingIdx] = useState(null);
   const [editingTodoIdx, setEditingTodoIdx] = useState(null);
   const [editingReminderIdx, setEditingReminderIdx] = useState(null);
+  const [editingTransport, setEditingTransport] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [editIcon, setEditIcon] = useState("");
+  const [transportForm, setTransportForm] = useState({});
 
   if (!trip) {
     return (
@@ -58,11 +60,15 @@ function TripDetails() {
   );
 
   const daysLeft = () => {
-    if (!trip.dateFrom) return 0;
+    const dateStr = trip.transport?.departDate || trip.dateFrom;
+    if (!dateStr) return null;
+    const start = new Date(dateStr);
+    if (isNaN(start.getTime())) return null;
     const now = new Date();
-    const start = new Date(trip.dateFrom);
+    now.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
     const diff = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    return diff;
   };
 
   const packedCount = trip.packing?.filter((i) => i.packed).length || 0;
@@ -71,6 +77,7 @@ function TripDetails() {
   const todoTotal = trip.todoList?.length || 0;
 
   const handleDelete = () => {
+    if (!confirm("Are you sure you want to delete this trip? This cannot be undone.")) return;
     dispatch(deleteTripThunk(trip._id));
     navigate("/dashboard");
   };
@@ -140,6 +147,41 @@ function TripDetails() {
     persist("reminders", arr);
   };
 
+  const googleFlightsUrl = () => {
+    const dest = trip.transport?.to || "destination";
+    return `https://www.google.com/travel/flights?q=Flights+to+${encodeURIComponent(dest)}`;
+  };
+
+  const startEditTransport = () => {
+    setTransportForm({
+      type: trip.transport?.type || "flight",
+      carrier: trip.transport?.carrier || "",
+      flightNo: trip.transport?.flightNo || "",
+      from: trip.transport?.from || "",
+      to: trip.transport?.to || "",
+      departDate: trip.transport?.departDate || "",
+      departTime: trip.transport?.departTime || "",
+      arriveTime: trip.transport?.arriveTime || "",
+      terminal: trip.transport?.terminal || "",
+      seat: trip.transport?.seat || "",
+      gate: trip.transport?.gate || "",
+    });
+    setEditingTransport(true);
+  };
+
+  const saveTransport = () => {
+    persist("transport", transportForm);
+    setEditingTransport(false);
+  };
+
+  const cancelEditTransport = () => {
+    setEditingTransport(false);
+  };
+
+  const handleTransportChange = (e) => {
+    setTransportForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
   return (
     <>
       <Navbar />
@@ -166,13 +208,11 @@ function TripDetails() {
             <p className="text-slate-400 mt-1">
               {trip.dates} · {trip.travellers} traveller
               {trip.travellers > 1 ? "s" : ""}
-              {trip.dateFrom && (
-                <>
-                  {" "} · Starts in{" "}
-                  <span className="text-white font-semibold">
-                    {daysLeft()} days
-                  </span>
-                </>
+              {daysLeft() !== null && daysLeft() >= 0 && (
+                <> {" "} · Starts in <span className="text-white font-semibold">{daysLeft()} days</span></>
+              )}
+              {daysLeft() !== null && daysLeft() < 0 && (
+                <> {" "} · <span className="text-green-400 font-semibold">Departed</span></>
               )}
             </p>
           </div>
@@ -306,12 +346,80 @@ function TripDetails() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {trip.transport && (
-              <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-lg">{trip.transport.type === "flight" ? "✈️" : "🚆"}</span>
-                  <h2 className="text-lg font-semibold text-white">{trip.transport.type === "flight" ? "Flight Details" : "Train Details"}</h2>
+            <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{trip.transport?.type === "flight" ? "✈️" : "🚆"}</span>
+                  <h2 className="text-lg font-semibold text-white">{trip.transport?.type === "flight" ? "Flight Details" : "Train Details"}</h2>
                 </div>
+                <div className="flex items-center gap-2">
+                  {trip.transport && (
+                    <a href={googleFlightsUrl()} target="_blank" rel="noopener noreferrer" className="text-xs bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 px-2.5 py-1 rounded-full border border-indigo-500/30 transition font-medium">
+                      Google Flights ↗
+                    </a>
+                  )}
+                  <button onClick={startEditTransport} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium cursor-pointer">
+                    {trip.transport ? "Edit" : "+ Add"}
+                  </button>
+                </div>
+              </div>
+              {editingTransport ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Type</label>
+                      <select name="type" value={transportForm.type} onChange={handleTransportChange} className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white">
+                        <option value="flight">Flight ✈️</option>
+                        <option value="train">Train 🚆</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Carrier</label>
+                      <input name="carrier" value={transportForm.carrier} onChange={handleTransportChange} placeholder="e.g. Air France" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Flight/Train No.</label>
+                      <input name="flightNo" value={transportForm.flightNo} onChange={handleTransportChange} placeholder="e.g. AF 101" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Seat</label>
+                      <input name="seat" value={transportForm.seat} onChange={handleTransportChange} placeholder="e.g. 22A" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Departure City</label>
+                      <input name="from" value={transportForm.from} onChange={handleTransportChange} placeholder="e.g. New York (JFK)" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Arrival City</label>
+                      <input name="to" value={transportForm.to} onChange={handleTransportChange} placeholder="e.g. Paris (CDG)" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Depart Date</label>
+                      <input name="departDate" value={transportForm.departDate} onChange={handleTransportChange} placeholder="e.g. Jul 20, 2026" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Depart Time</label>
+                      <input name="departTime" value={transportForm.departTime} onChange={handleTransportChange} placeholder="e.g. 18:00" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Arrive Time</label>
+                      <input name="arriveTime" value={transportForm.arriveTime} onChange={handleTransportChange} placeholder="e.g. 07:00" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Terminal</label>
+                      <input name="terminal" value={transportForm.terminal} onChange={handleTransportChange} placeholder="e.g. Terminal 1" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Gate</label>
+                      <input name="gate" value={transportForm.gate} onChange={handleTransportChange} placeholder="e.g. C14" className="w-full rounded bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white placeholder-slate-500" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <button onClick={saveTransport} className="rounded bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-400 transition cursor-pointer">Save</button>
+                    <button onClick={cancelEditTransport} className="rounded bg-slate-700 px-4 py-2 text-sm text-slate-300 hover:text-white transition cursor-pointer">Cancel</button>
+                  </div>
+                </div>
+              ) : trip.transport ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-white font-semibold text-lg">{trip.transport.carrier} {trip.transport.flightNo}</span>
@@ -340,8 +448,10 @@ function TripDetails() {
                     <span>Gate {trip.transport.gate}</span>
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-slate-500 text-sm py-4 text-center">No flight details added yet. Click "+ Add" above.</p>
+              )}
+            </div>
 
             {/* Reminders */}
             <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-6">

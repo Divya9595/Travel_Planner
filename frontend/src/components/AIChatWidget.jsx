@@ -86,7 +86,11 @@ function AIChatWidget({ onItineraryGenerated }) {
           onItineraryGenerated(data.itinerary);
         }
         navigate("/dashboard/trips", {
-          state: { generatedItinerary: data.itinerary },
+          state: {
+            generatedItinerary: data.itinerary,
+            dateFrom: data.itinerary.dateFrom || null,
+            dateTo: data.itinerary.dateTo || null,
+          },
         });
       }
     } catch {

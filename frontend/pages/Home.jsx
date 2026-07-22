@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar";
@@ -101,12 +101,26 @@ function Home() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [dateModal, setDateModal] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   useEffect(() => {
     dispatch(fetchTrips());
   }, [dispatch]);
 
-  const handleSelectDestination = (destName) => {
-    navigate(`/dashboard/trips?destination=${encodeURIComponent(destName)}`);
+  const handleCardClick = (dest) => {
+    setDateModal(dest);
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const handleConfirmDates = () => {
+    if (!dateFrom || !dateTo || !dateModal) return;
+    navigate(
+      `/dashboard/trips?destination=${encodeURIComponent(dateModal.name)}&dateFrom=${dateFrom}&dateTo=${dateTo}`
+    );
   };
 
   return (
@@ -301,7 +315,7 @@ function Home() {
                         Generate Itinerary
                       </span>
                       <button
-                        onClick={() => handleSelectDestination(dest.name)}
+                        onClick={() => handleCardClick(dest)}
                         className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500 group-hover:bg-indigo-400 text-white font-bold transition-all shadow-md group-hover:scale-110 cursor-pointer"
                         title={`Plan trip to ${dest.name}`}
                       >
@@ -381,6 +395,66 @@ function Home() {
 
       {/* Floating AI Chat Assistant Widget */}
       <AIChatWidget />
+
+      {/* Date Picker Modal */}
+      {dateModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-3xl">{dateModal.icon}</span>
+              <div>
+                <h3 className="text-lg font-bold text-white">{dateModal.name}</h3>
+                <p className="text-slate-400 text-sm">{dateModal.duration} &middot; {dateModal.tagline}</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300 mb-4">Select your travel dates to generate the itinerary:</p>
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Departure Date</label>
+                <input
+                  type="date"
+                  min={todayStr}
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    if (dateTo && dateTo < e.target.value) setDateTo("");
+                  }}
+                  className="w-full rounded-lg bg-slate-700 border border-slate-600 px-3 py-2.5 text-sm text-white [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Return Date</label>
+                <input
+                  type="date"
+                  min={dateFrom || todayStr}
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full rounded-lg bg-slate-700 border border-slate-600 px-3 py-2.5 text-sm text-white [color-scheme:dark]"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleConfirmDates}
+                disabled={!dateFrom || !dateTo}
+                className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition cursor-pointer ${
+                  !dateFrom || !dateTo
+                    ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                    : "bg-indigo-500 text-white hover:bg-indigo-400"
+                }`}
+              >
+                Generate Itinerary
+              </button>
+              <button
+                onClick={() => setDateModal(null)}
+                className="rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

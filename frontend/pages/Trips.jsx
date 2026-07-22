@@ -728,6 +728,7 @@ function Trips() {
   const [activeTab, setActiveTab] = useState("itinerary");
   const [itinerary, setItinerary] = useState(null);
   const [tripAdded, setTripAdded] = useState(false);
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const { previousTrips } = useSelector((state) => state.trips);
   const dispatch = useDispatch();
@@ -738,9 +739,13 @@ function Trips() {
       setItinerary(genItinerary);
       setActiveTab("itinerary");
       setTripAdded(false);
-      if (genItinerary.destination) {
-        setSearch((prev) => ({ ...prev, destination: genItinerary.destination }));
-      }
+      setSearch((prev) => ({
+        ...prev,
+        destination: genItinerary.destination || prev.destination,
+        dateFrom: location.state?.dateFrom || genItinerary.dateFrom || "",
+        dateTo: location.state?.dateTo || genItinerary.dateTo || "",
+        travellers: genItinerary.travellers || prev.travellers,
+      }));
       setTimeout(() => {
         window.scrollTo({ top: 350, behavior: "smooth" });
       }, 100);
@@ -750,18 +755,32 @@ function Trips() {
   useEffect(() => {
     if (location.state?.generatedItinerary) return;
     const destParam = searchParams.get("destination");
+    const dateFromParam = searchParams.get("dateFrom");
+    const dateToParam = searchParams.get("dateTo");
     if (destParam) {
       const destName = decodeURIComponent(destParam);
-      setSearch((prev) => ({ ...prev, destination: destName }));
-      const generated = generateItineraryForDates(
-        destName,
-        search.dateFrom,
-        search.dateTo,
-        search.travellers
-      );
-      setItinerary(generated);
+      setSearch((prev) => {
+        const updated = { ...prev, destination: destName };
+        if (dateFromParam) updated.dateFrom = dateFromParam;
+        if (dateToParam) updated.dateTo = dateToParam;
+        return updated;
+      });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!search.destination || !search.dateFrom || !search.dateTo) return;
+    if (itinerary && itinerary.destination === search.destination) return;
+    const generated = generateItineraryForDates(
+      search.destination,
+      search.dateFrom,
+      search.dateTo,
+      search.travellers
+    );
+    setItinerary(generated);
+    setActiveTab("itinerary");
+    setTripAdded(false);
+  }, [search.destination, search.dateFrom, search.dateTo]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -777,6 +796,10 @@ function Trips() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!search.destination.trim()) return;
+    if (!search.dateFrom || !search.dateTo) {
+      alert("Please enter both departure and return dates before planning your trip.");
+      return;
+    }
 
     const generated = generateItineraryForDates(
       search.destination,
@@ -792,13 +815,17 @@ function Trips() {
 
   const handleAddTrip = () => {
     if (!itinerary) return;
+    if (!search.dateFrom || !search.dateTo) {
+      alert("Please enter both departure and arrival dates before saving.");
+      return;
+    }
     const dest = itinerary.destination.toLowerCase();
     const dashboardData = generateDashboardData(dest, itinerary, search.dateFrom);
     const tripPayload = {
       from: search.from,
       destination: itinerary.destination,
-      dateFrom: search.dateFrom || todayStr,
-      dateTo: search.dateTo || todayStr,
+      dateFrom: search.dateFrom,
+      dateTo: search.dateTo,
       travellers: itinerary.travellers,
       dates: itinerary.tripDuration,
       itinerary,
@@ -912,7 +939,12 @@ function Trips() {
 
             <button
               type="submit"
-              className="w-full lg:w-auto rounded-lg bg-indigo-500 px-8 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 transition cursor-pointer whitespace-nowrap"
+              disabled={!search.dateFrom || !search.dateTo || !search.destination.trim()}
+              className={`w-full lg:w-auto rounded-lg px-8 py-2.5 text-sm font-semibold transition whitespace-nowrap ${
+                !search.dateFrom || !search.dateTo || !search.destination.trim()
+                  ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                  : "bg-indigo-500 text-white hover:bg-indigo-400 cursor-pointer"
+              }`}
             >
               Plan My Trip
             </button>
@@ -985,6 +1017,55 @@ function Trips() {
                 </div>
               ) : (
                 <div>
+                  {/* Inline Date Picker — shown when dates are missing */}
+                  {itinerary && (!search.dateFrom || !search.dateTo) && (
+                    <div className="mb-6 rounded-xl bg-slate-800 border border-indigo-500/40 p-5 flex flex-col sm:flex-row items-center gap-4">
+                      <div className="flex items-center gap-2 text-indigo-300 text-sm">
+                        <span className="text-lg">📅</span>
+                        <span className="font-medium">Set your travel dates to save this itinerary:</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <input
+                          type="date"
+                          min={todayStr}
+                          value={search.dateFrom}
+                          onChange={(e) => {
+                            setSearch((prev) => {
+                              const updated = { ...prev, dateFrom: e.target.value };
+                              if (prev.dateTo && prev.dateTo < e.target.value) updated.dateTo = "";
+                              return updated;
+                            });
+                          }}
+                          className="rounded-lg bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white [color-scheme:dark]"
+                        />
+                        <span className="text-slate-400 text-xs">to</span>
+                        <input
+                          type="date"
+                          min={search.dateFrom || todayStr}
+                          value={search.dateTo}
+                          onChange={(e) => setSearch((prev) => ({ ...prev, dateTo: e.target.value }))}
+                          className="rounded-lg bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white [color-scheme:dark]"
+                        />
+                        <button
+                          onClick={() => {
+                            if (search.dateFrom && search.dateTo) {
+                              const generated = generateItineraryForDates(search.destination, search.dateFrom, search.dateTo, search.travellers);
+                              setItinerary(generated);
+                            }
+                          }}
+                          disabled={!search.dateFrom || !search.dateTo}
+                          className={`rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer ${
+                            !search.dateFrom || !search.dateTo
+                              ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                              : "bg-indigo-500 text-white hover:bg-indigo-400"
+                          }`}
+                        >
+                          Generate
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Trip Header */}
                   <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -998,14 +1079,20 @@ function Trips() {
                     </div>
                     <button
                       onClick={handleAddTrip}
-                      disabled={tripAdded}
-                      className={`shrink-0 rounded-lg px-6 py-2.5 text-sm font-semibold transition cursor-pointer whitespace-nowrap ${
+                      disabled={tripAdded || !search.dateFrom || !search.dateTo}
+                      className={`shrink-0 rounded-lg px-6 py-2.5 text-sm font-semibold transition whitespace-nowrap ${
                         tripAdded
                           ? "bg-green-500/20 text-green-400 border border-green-500/30 cursor-default"
-                          : "bg-emerald-500 text-white hover:bg-emerald-400"
+                          : !search.dateFrom || !search.dateTo
+                            ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                            : "bg-emerald-500 text-white hover:bg-emerald-400 cursor-pointer"
                       }`}
                     >
-                      {tripAdded ? "✓ Added to My Trips" : "+ Add My Trip"}
+                      {tripAdded
+                        ? "✓ Added to My Trips"
+                        : !search.dateFrom || !search.dateTo
+                          ? "Set dates first"
+                          : "+ Add My Trip"}
                     </button>
                   </div>
 
@@ -1035,7 +1122,7 @@ function Trips() {
 
                         {/* Time Blocks */}
                         <div className="p-6 space-y-6">
-                          {day.blocks.map((block) => (
+                          {(day.blocks || []).map((block) => (
                             <div key={block.time}>
                               <div className="flex items-center gap-2 mb-3">
                                 <span className="text-lg">{block.icon}</span>
@@ -1045,7 +1132,7 @@ function Trips() {
                               </div>
 
                               <div className="space-y-2 ml-8">
-                                {block.activities.map((activity, idx) => (
+                                {(block.activities || []).map((activity, idx) => (
                                   <div
                                     key={idx}
                                     className="flex items-center gap-3"

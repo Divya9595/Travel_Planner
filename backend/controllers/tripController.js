@@ -68,7 +68,7 @@ export const getTrip = async (req, res) => {
 
 export const updateTrip = async (req, res) => {
   try {
-    const { packing, todoList, reminders } = req.body;
+    const { packing, todoList, reminders, transport } = req.body;
     const trip = await Trip.findOne({ _id: req.params.id, user: req.user.id });
     if (!trip) {
       return res.status(404).json({ message: 'Trip not found' });
@@ -76,6 +76,7 @@ export const updateTrip = async (req, res) => {
     if (packing !== undefined) trip.packing = packing;
     if (todoList !== undefined) trip.todoList = todoList;
     if (reminders !== undefined) trip.reminders = reminders;
+    if (transport !== undefined) trip.transport = transport;
     const updated = await trip.save();
     res.json(updated);
   } catch (error) {

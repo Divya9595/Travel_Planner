@@ -10,6 +10,7 @@ CONVERSATION FLOW:
 RULES:
 - Be conversational and warm. Don't ask all questions at once — gather info over 2-4 exchanges.
 - Once you have destination + days + budget (minimum), ask if they're ready to generate.
+- If the user mentions specific dates, ALWAYS include "dateFrom" and "dateTo" in the itinerary JSON using YYYY-MM-DD format. If no dates are provided, set them to null.
 - When the user says "generate", "plan", "create itinerary", "go ahead", "sounds good", "yes please", "let's do it", or similar affirmative — generate the itinerary.
 - Always respond in this EXACT JSON format when generating an itinerary:
 
@@ -17,6 +18,8 @@ RULES:
   "reply": "Your conversational message to the user (include a brief summary of the plan)",
   "itinerary": {
     "destination": "Full destination name",
+    "dateFrom": "YYYY-MM-DD",
+    "dateTo": "YYYY-MM-DD",
     "tripDuration": "X Days",
     "travellers": 2,
     "days": [
