@@ -246,19 +246,29 @@ function TripDetails() {
               </div>
             ) : null}
 
-            {trip.attractions?.length > 0 && (
-              <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">📍</span>
-                  <h2 className="text-sm font-semibold text-white">Famous Attractions</h2>
+            {(() => {
+              const itineraryPlaces = (trip.itinerary?.days || []).flatMap((d) =>
+                (d.blocks || []).flatMap((b) =>
+                  (b.activities || []).filter((a) => a.type === "sightseeing").map((a) => a.name)
+                )
+              );
+              const unique = [...new Set(itineraryPlaces)];
+              const top = unique.length > 0 ? unique.slice(0, 7) : (trip.attractions || []).slice(0, 7);
+              if (top.length === 0) return null;
+              return (
+                <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📍</span>
+                    <h2 className="text-sm font-semibold text-white">Sightseeing Attractions</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {top.map((a, idx) => (
+                      <span key={idx} className="rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-3 py-1 text-xs font-medium">{a}</span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {trip.attractions.map((a, idx) => (
-                    <span key={idx} className="rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 px-3 py-1 text-xs font-medium">{a}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Tab Navigation */}
