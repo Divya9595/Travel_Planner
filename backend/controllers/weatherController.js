@@ -36,13 +36,20 @@ export const getWeather = async (req, res) => {
       return res.status(400).json({ error: "Destination is required" });
     }
 
-    // Step 1: Geocode destination to get lat/lon
-    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(destination)}&count=1&language=en`;
-    const geoRes = await fetch(geoUrl);
-    const geoData = await geoRes.json();
+    // Try progressively simpler versions of the destination name
+    const parts = destination.split(",").map((s) => s.trim()).filter(Boolean);
+    const attempts = parts.length > 1 ? [parts[0], destination] : [destination];
 
-    if (!geoData.results || geoData.results.length === 0) {
-      return res.status(404).json({ error: "Location not found" });
+    let geoData = null;
+    for (const attempt of attempts) {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(attempt)}&count=1&language=en`;
+      const geoRes = await fetch(geoUrl);
+      geoData = await geoRes.json();
+      if (geoData.results && geoData.results.length > 0) break;
+    }
+
+    if (!geoData || !geoData.results || geoData.results.length === 0) {
+      return res.json({ weather: null, location: null });
     }
 
     const { latitude, longitude, name, country } = geoData.results[0];

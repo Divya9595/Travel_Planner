@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import Navbar from "../src/components/Navbar";
-import { deleteTripThunk, updateTripThunk } from "../src/store/slices/tripSlice";
+import { deleteTripThunk, updateTripThunk, setPreviousTrips } from "../src/store/slices/tripSlice";
 import api from "../src/store/api";
 
 const typeStyles = {
@@ -30,7 +30,7 @@ function TripDetails() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { previousTrips } = useSelector((state) => state.trips);
-  const trip = previousTrips.find((t) => t._id === id);
+  const reduxTrip = previousTrips.find((t) => t._id === id);
 
   const [activeTab, setActiveTab] = useState("itinerary");
   const [editingPackingIdx, setEditingPackingIdx] = useState(null);
@@ -41,24 +41,56 @@ function TripDetails() {
   const [editIcon, setEditIcon] = useState("");
   const [transportForm, setTransportForm] = useState({});
   const [liveWeather, setLiveWeather] = useState(null);
+  const [fetchedTrip, setFetchedTrip] = useState(null);
+  const [loadingTrip, setLoadingTrip] = useState(!reduxTrip);
 
   useEffect(() => {
-    if (!trip?.destination) return;
+    if (reduxTrip) return;
     let cancelled = false;
-    api.get(`/weather/${encodeURIComponent(trip.destination)}`)
+    setLoadingTrip(true);
+    api.get(`/trips/${id}`)
+      .then((res) => {
+        if (!cancelled) {
+          setFetchedTrip(res.data);
+          dispatch(setPreviousTrips([res.data]));
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingTrip(false); });
+    return () => { cancelled = true; };
+  }, [id, reduxTrip, dispatch]);
+
+  const resolvedTrip = reduxTrip || fetchedTrip;
+
+  useEffect(() => {
+    if (!resolvedTrip?.destination) return;
+    let cancelled = false;
+    api.get(`/weather/${encodeURIComponent(resolvedTrip.destination)}`)
       .then((res) => {
         if (!cancelled) setLiveWeather(res.data.weather);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [trip?.destination]);
+  }, [resolvedTrip?.destination]);
 
-  if (!trip) {
+  if (loadingTrip) {
     return (
       <>
         <Navbar />
         <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center px-6 py-12">
-          <div className="text-center max-w-md">
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent" />
+          <p className="text-slate-400 text-sm mt-4">Loading trip...</p>
+        </div>
+      </>
+    );
+  }
+
+  if (!resolvedTrip) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center px-6 py-12">
+          <div className="text-center max-md">
             <div className="text-6xl mb-6">🔍</div>
             <h2 className="text-3xl font-bold text-white mb-3">Trip Not Found</h2>
             <p className="text-slate-400 text-lg mb-8">This trip doesn't exist or has been removed.</p>
@@ -70,6 +102,8 @@ function TripDetails() {
       </>
     );
   }
+
+  const trip = resolvedTrip;
 
   const persist = useCallback(
     (field, value) => {
