@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import Navbar from "../src/components/Navbar";
 import { deleteTripThunk, updateTripThunk } from "../src/store/slices/tripSlice";
+import api from "../src/store/api";
 
 const typeStyles = {
   sightseeing: "bg-blue-500/15 text-blue-400 border-blue-500/30",
@@ -39,6 +40,18 @@ function TripDetails() {
   const [editValue, setEditValue] = useState("");
   const [editIcon, setEditIcon] = useState("");
   const [transportForm, setTransportForm] = useState({});
+  const [liveWeather, setLiveWeather] = useState(null);
+
+  useEffect(() => {
+    if (!trip?.destination) return;
+    let cancelled = false;
+    api.get(`/weather/${encodeURIComponent(trip.destination)}`)
+      .then((res) => {
+        if (!cancelled) setLiveWeather(res.data.weather);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [trip?.destination]);
 
   if (!trip) {
     return (
@@ -203,25 +216,35 @@ function TripDetails() {
 
           {/* Weather & Attractions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {trip.weather && (
+            {(trip.weatherLocation || liveWeather || trip.weather) ? (
               <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">🌤️</span>
-                  <h2 className="text-sm font-semibold text-white">Weather</h2>
+                  <h2 className="text-sm font-semibold text-white">Weather — {trip.destination}</h2>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">{trip.weather.icon}</span>
-                  <div>
-                    <p className="text-2xl font-bold text-white">{trip.weather.temp}°C</p>
-                    <p className="text-slate-400 text-xs">{trip.weather.condition}</p>
+                {(liveWeather || trip.weather) ? (
+                  <div className="flex items-center gap-4">
+                    <span className="text-4xl">{(liveWeather || trip.weather).icon}</span>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{(liveWeather || trip.weather).temp}°C</p>
+                      <p className="text-slate-400 text-xs">{(liveWeather || trip.weather).condition}</p>
+                    </div>
+                    <div className="flex gap-4 text-xs sm:ml-auto">
+                      <div><p className="text-slate-500">Humidity</p><p className="text-white font-medium">{(liveWeather || trip.weather).humidity}%</p></div>
+                      <div><p className="text-slate-500">Wind</p><p className="text-white font-medium">{(liveWeather || trip.weather).wind} km/h</p></div>
+                    </div>
                   </div>
-                  <div className="flex gap-4 text-xs sm:ml-auto">
-                    <div><p className="text-slate-500">Humidity</p><p className="text-white font-medium">{trip.weather.humidity}%</p></div>
-                    <div><p className="text-slate-500">Wind</p><p className="text-white font-medium">{trip.weather.wind} km/h</p></div>
+                ) : (
+                  <div className="animate-pulse flex items-center gap-4">
+                    <div className="w-12 h-12 rounded bg-slate-700" />
+                    <div className="space-y-2">
+                      <div className="h-6 w-16 rounded bg-slate-700" />
+                      <div className="h-3 w-24 rounded bg-slate-700" />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            )}
+            ) : null}
 
             {trip.attractions?.length > 0 && (
               <div className="rounded-2xl bg-slate-800 border border-slate-700/50 p-5">

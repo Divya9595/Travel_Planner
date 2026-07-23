@@ -259,12 +259,25 @@ function Trips() {
       });
   };
 
-  const handleAddTrip = () => {
+  const handleAddTrip = async () => {
     if (!itinerary) return;
     if (!search.dateFrom || !search.dateTo) {
       alert("Please enter both departure and arrival dates before saving.");
       return;
     }
+
+    setTripAdded(true);
+
+    let weather = null;
+    let location = null;
+    try {
+      const weatherRes = await api.get(`/weather/${encodeURIComponent(itinerary.destination)}`);
+      weather = weatherRes.data.weather;
+      location = weatherRes.data.location;
+    } catch {
+      // fallback to static weather
+    }
+
     const dest = itinerary.destination.toLowerCase();
     const dashboardData = generateDashboardData(dest, itinerary, search.dateFrom, destData);
     const tripPayload = {
@@ -276,9 +289,10 @@ function Trips() {
       dates: itinerary.tripDuration,
       itinerary,
       ...dashboardData,
+      ...(weather && { weather }),
+      ...(location && { weatherLocation: location }),
     };
     dispatch(createTripThunk(tripPayload));
-    setTripAdded(true);
   };
 
   return (

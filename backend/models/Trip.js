@@ -39,6 +39,9 @@ const tripSchema = new mongoose.Schema(
     weather: {
       type: mongoose.Schema.Types.Mixed,
     },
+    weatherLocation: {
+      type: mongoose.Schema.Types.Mixed,
+    },
     attractions: [
       {
         type: String,
