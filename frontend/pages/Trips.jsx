@@ -78,7 +78,7 @@ const defaultDashboardData = {
   transport: { type: "flight", carrier: "Airline", flightNo: "XX 000", from: "Home City", to: "Destination", departDate: "Oct 1, 2026", departTime: "08:00", arriveTime: "14:00", terminal: "Terminal 1", seat: "10A", gate: "D5" },
 };
 
-function generateDashboardData(dest, itinerary, fromDate, destData = DEFAULT_DESTINATION_DATA) {
+function generateDashboardData(dest, itinerary, fromDate, destData, defaults) {
   let matched = null;
   for (const key of Object.keys(destData)) {
     if (dest.includes(key)) {
@@ -90,22 +90,10 @@ function generateDashboardData(dest, itinerary, fromDate, destData = DEFAULT_DES
   return {
     weather: base.weather,
     attractions: base.attractions,
-    packing: base.packing.map((p) => ({ ...p })),
-    todoList: [
-      { task: "Book flights", done: false },
-      { task: "Reserve hotel", done: false },
-      { task: "Buy travel insurance", done: false },
-      { task: "Check passport validity", done: false },
-      { task: "Pack luggage", done: false },
-      { task: "Download offline maps", done: false },
-    ],
+    packing: (matched ? base.packing : defaults.packing).map((p) => ({ ...p })),
+    todoList: defaults.todoList.map((t) => ({ ...t })),
     transport: { ...base.transport, to: itinerary.destination },
-    reminders: [
-      { text: "Check passport validity (6+ months)", icon: "🛂", urgent: true },
-      { text: "Check visa requirements", icon: "📋", urgent: false },
-      { text: "Carry printed confirmations", icon: "📄", urgent: false },
-      { text: "Download local transport app", icon: "📱", urgent: false },
-    ],
+    reminders: defaults.reminders.map((r) => ({ ...r })),
   };
 }
 
@@ -124,6 +112,23 @@ function Trips() {
   const [tripAdded, setTripAdded] = useState(false);
   const todayStr = new Date().toISOString().split("T")[0];
   const [destData, setDestData] = useState(DEFAULT_DESTINATION_DATA);
+  const [defaults, setDefaults] = useState({
+    packing: defaultDashboardData.packing,
+    todoList: [
+      { task: "Book flights", done: false },
+      { task: "Reserve hotel", done: false },
+      { task: "Buy travel insurance", done: false },
+      { task: "Check passport validity", done: false },
+      { task: "Pack luggage", done: false },
+      { task: "Download offline maps", done: false },
+    ],
+    reminders: [
+      { text: "Check passport validity (6+ months)", icon: "🛂", urgent: true },
+      { text: "Check visa requirements", icon: "📋", urgent: false },
+      { text: "Carry printed confirmations", icon: "📄", urgent: false },
+      { text: "Download local transport app", icon: "📱", urgent: false },
+    ],
+  });
 
   const [step, setStep] = useState("search");
   const [attractions, setAttractions] = useState([]);
@@ -135,8 +140,22 @@ function Trips() {
   useEffect(() => {
     const loadContent = async () => {
       try {
-        const ddRes = await api.get("/content/home.destinationData");
-        setDestData(ddRes.data.value);
+        const [ddRes, dpRes, dtRes, drRes] = await Promise.allSettled([
+          api.get("/content/home.destinationData"),
+          api.get("/content/home.defaultPacking"),
+          api.get("/content/home.defaultTodoList"),
+          api.get("/content/home.defaultReminders"),
+        ]);
+        if (ddRes.status === "fulfilled") setDestData(ddRes.data.value);
+        if (dpRes.status === "fulfilled" && dpRes.value.data.value?.length) {
+          setDefaults((prev) => ({ ...prev, packing: dpRes.value.data.value }));
+        }
+        if (dtRes.status === "fulfilled" && dtRes.value.data.value?.length) {
+          setDefaults((prev) => ({ ...prev, todoList: dtRes.value.data.value }));
+        }
+        if (drRes.status === "fulfilled" && drRes.value.data.value?.length) {
+          setDefaults((prev) => ({ ...prev, reminders: drRes.value.data.value }));
+        }
       } catch {
         // keep defaults
       }
@@ -279,7 +298,7 @@ function Trips() {
     }
 
     const dest = itinerary.destination.toLowerCase();
-    const dashboardData = generateDashboardData(dest, itinerary, search.dateFrom, destData);
+    const dashboardData = generateDashboardData(dest, itinerary, search.dateFrom, destData, defaults);
     const tripPayload = {
       from: search.from,
       destination: itinerary.destination,

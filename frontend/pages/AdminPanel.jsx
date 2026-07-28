@@ -9,6 +9,9 @@ const TABS = [
   { id: "ai-features", label: "AI Features", icon: "✨" },
   { id: "sample-itineraries", label: "Sample Itineraries", icon: "📝" },
   { id: "destination-data", label: "Destination Data", icon: "🌤️" },
+  { id: "default-packing", label: "Default Packing", icon: "🎒" },
+  { id: "default-todo", label: "Default To-Do", icon: "✅" },
+  { id: "default-reminders", label: "Default Reminders", icon: "🔔" },
   { id: "landing-features", label: "Landing Features", icon: "🧩" },
   { id: "landing-steps", label: "How It Works", icon: "📋" },
   { id: "landing-dest", label: "Landing Destinations", icon: "🌍" },
@@ -32,6 +35,9 @@ function AdminPanel() {
   const [landingDest, setLandingDest] = useState([]);
   const [sampleItineraries, setSampleItineraries] = useState("{}");
   const [destinationData, setDestinationData] = useState("{}");
+  const [defaultPacking, setDefaultPacking] = useState([]);
+  const [defaultTodo, setDefaultTodo] = useState([]);
+  const [defaultReminders, setDefaultReminders] = useState([]);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGreeting, setAiGreeting] = useState("");
   const [users, setUsers] = useState([]);
@@ -54,7 +60,7 @@ function AdminPanel() {
   const loadAllContent = async () => {
     setLoading(true);
     try {
-      const [destRes, aiFeatRes, lfRes, lsRes, ldRes, siRes, ddRes, promptRes, greetRes, usersRes] =
+      const [destRes, aiFeatRes, lfRes, lsRes, ldRes, siRes, ddRes, dpRes, dtRes, drRes, promptRes, greetRes, usersRes] =
         await Promise.allSettled([
           api.get("/content/home.popularDestinations"),
           api.get("/content/home.aiFeatures"),
@@ -63,6 +69,9 @@ function AdminPanel() {
           api.get("/content/landing.destinations"),
           api.get("/content/home.sampleItineraries"),
           api.get("/content/home.destinationData"),
+          api.get("/content/home.defaultPacking"),
+          api.get("/content/home.defaultTodoList"),
+          api.get("/content/home.defaultReminders"),
           api.get("/content/ai.prompt"),
           api.get("/content/ai.greeting"),
           api.get("/auth/users"),
@@ -75,6 +84,9 @@ function AdminPanel() {
       if (ldRes.status === "fulfilled") setLandingDest(ldRes.value.data.value || []);
       if (siRes.status === "fulfilled") setSampleItineraries(JSON.stringify(siRes.value.data.value || {}, null, 2));
       if (ddRes.status === "fulfilled") setDestinationData(JSON.stringify(ddRes.value.data.value || {}, null, 2));
+      if (dpRes.status === "fulfilled") setDefaultPacking(dpRes.value.data.value || []);
+      if (dtRes.status === "fulfilled") setDefaultTodo(dtRes.value.data.value || []);
+      if (drRes.status === "fulfilled") setDefaultReminders(drRes.value.data.value || []);
       if (promptRes.status === "fulfilled") {
         const val = promptRes.value.data.value;
         setAiPrompt(typeof val === "string" ? val : val?.text || "");
@@ -215,6 +227,50 @@ function AdminPanel() {
                         catch { showToast("Invalid JSON", "error"); }
                       }}
                       saving={saving}
+                    />
+                  )}
+
+                  {activeTab === "default-packing" && (
+                    <ArraySection
+                      title="Default Packing List"
+                      description="Default packing items pre-filled when a user creates a new trip"
+                      items={defaultPacking}
+                      setItems={setDefaultPacking}
+                      onSave={() => saveSection("home.defaultPacking", defaultPacking)}
+                      saving={saving}
+                      fields={[
+                        { key: "item", label: "Item Name", type: "text" },
+                        { key: "icon", label: "Icon (emoji)", type: "text" },
+                      ]}
+                    />
+                  )}
+
+                  {activeTab === "default-todo" && (
+                    <ArraySection
+                      title="Default To-Do List"
+                      description="Default to-do tasks pre-filled when a user creates a new trip"
+                      items={defaultTodo}
+                      setItems={setDefaultTodo}
+                      onSave={() => saveSection("home.defaultTodoList", defaultTodo)}
+                      saving={saving}
+                      fields={[
+                        { key: "task", label: "Task", type: "text" },
+                      ]}
+                    />
+                  )}
+
+                  {activeTab === "default-reminders" && (
+                    <ArraySection
+                      title="Default Reminders"
+                      description="Default reminders pre-filled when a user creates a new trip"
+                      items={defaultReminders}
+                      setItems={setDefaultReminders}
+                      onSave={() => saveSection("home.defaultReminders", defaultReminders)}
+                      saving={saving}
+                      fields={[
+                        { key: "text", label: "Reminder Text", type: "text" },
+                        { key: "icon", label: "Icon (emoji)", type: "text" },
+                      ]}
                     />
                   )}
 

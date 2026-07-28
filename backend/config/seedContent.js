@@ -485,6 +485,31 @@ const defaultSections = {
     },
   },
 
+  "home.defaultPacking": [
+    { item: "Passport", icon: "🛂", packed: false },
+    { item: "Travel adapter", icon: "🔌", packed: false },
+    { item: "Camera", icon: "📷", packed: false },
+    { item: "Comfortable shoes", icon: "👟", packed: false },
+    { item: "Sunscreen", icon: "🧴", packed: false },
+    { item: "Water bottle", icon: "🍶", packed: false },
+  ],
+
+  "home.defaultReminders": [
+    { text: "Check passport validity (6+ months)", icon: "🛂", urgent: true },
+    { text: "Check visa requirements", icon: "📋", urgent: false },
+    { text: "Carry printed confirmations", icon: "📄", urgent: false },
+    { text: "Download local transport app", icon: "📱", urgent: false },
+  ],
+
+  "home.defaultTodoList": [
+    { task: "Book flights", done: false },
+    { task: "Reserve hotel", done: false },
+    { task: "Buy travel insurance", done: false },
+    { task: "Check passport validity", done: false },
+    { task: "Pack luggage", done: false },
+    { task: "Download offline maps", done: false },
+  ],
+
   "home.destinationData": {
     paris: {
       weather: { temp: 22, condition: "Partly Cloudy", humidity: 60, wind: 15, icon: "⛅" },
