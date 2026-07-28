@@ -497,7 +497,7 @@ function ArraySection({ title, description, items, setItems, onSave, saving, fie
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {item.icon && <span className="text-lg">{item.icon}</span>}
-                      <span className="text-sm font-semibold text-white">{item.name || item.title || item.id || `Item ${idx + 1}`}</span>
+                      <span className="text-sm font-semibold text-white">{item.item || item.task || item.text || item.name || item.title || item.id || `Item ${idx + 1}`}</span>
                       {item.badge && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-500/20 text-indigo-300">{item.badge}</span>
                       )}
