@@ -113,7 +113,7 @@ function TripDetails() {
   );
 
   const daysLeft = () => {
-    const dateStr = trip.transport?.departDate || trip.dateFrom;
+    const dateStr = trip.dateFrom || trip.transport?.departDate || trip.dateTo;
     if (!dateStr) return null;
     const start = new Date(dateStr);
     if (isNaN(start.getTime())) return null;
@@ -121,6 +121,17 @@ function TripDetails() {
     now.setHours(0, 0, 0, 0);
     start.setHours(0, 0, 0, 0);
     return Math.ceil((start - now) / (1000 * 60 * 60 * 24));
+  };
+
+  const isCompleted = () => {
+    const endStr = trip.dateTo;
+    if (!endStr) return false;
+    const end = new Date(endStr);
+    if (isNaN(end.getTime())) return false;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    return end < now;
   };
 
   const packedCount = trip.packing?.filter((i) => i.packed).length || 0;
@@ -168,7 +179,7 @@ function TripDetails() {
     const arr = [...(trip[field] || [])];
     if (field === "packing") arr.push({ item: "New Item", icon: "📦", packed: false });
     else if (field === "todoList") arr.push({ task: "New Task", done: false });
-    else arr.push({ text: "New Reminder", icon: "📌", urgent: false });
+    else arr.push({ text: "New Reminder", icon: "📌", urgent: false, done: false });
     persist(field, arr);
   };
 
@@ -184,6 +195,12 @@ function TripDetails() {
     if (field === "packing") arr[idx] = { ...arr[idx], packed: !arr[idx].packed };
     else if (field === "todoList") arr[idx] = { ...arr[idx], done: !arr[idx].done };
     persist(field, arr);
+  };
+
+  const toggleReminderDone = (idx) => {
+    const arr = [...(trip.reminders || [])];
+    arr[idx] = { ...arr[idx], done: !arr[idx].done };
+    persist("reminders", arr);
   };
 
   const toggleUrgent = (idx) => {
@@ -243,8 +260,9 @@ function TripDetails() {
             <h1 className="text-2xl font-bold text-white">{trip.destination}</h1>
             <p className="text-slate-400 mt-1">
               {trip.dates} · {trip.travellers} traveller{trip.travellers > 1 ? "s" : ""}
-              {daysLeft() !== null && daysLeft() >= 0 && <> · Starts in <span className="text-white font-semibold">{daysLeft()} days</span></>}
-              {daysLeft() !== null && daysLeft() < 0 && <> · <span className="text-green-400 font-semibold">Departed</span></>}
+              {isCompleted() && <> · <span className="text-green-400 font-semibold">Completed</span></>}
+              {!isCompleted() && daysLeft() !== null && daysLeft() >= 0 && <> · Starts in <span className="text-white font-semibold">{daysLeft()} days</span></>}
+              {!isCompleted() && daysLeft() !== null && daysLeft() < 0 && <> · <span className="text-green-400 font-semibold">Departed</span></>}
             </p>
           </div>
 
@@ -491,8 +509,13 @@ function TripDetails() {
                         </div>
                       ) : (
                         <>
-                          <span className="text-base mt-0.5">{item.icon}</span>
-                          <span className="text-sm text-slate-300 flex-1">{item.text}</span>
+                          <button onClick={() => toggleReminderDone(idx)} className="flex items-center gap-3 flex-1 text-left cursor-pointer">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition ${item.done ? "bg-green-500 border-green-500" : "border-slate-600"}`}>
+                              {item.done && <span className="text-white text-xs">✓</span>}
+                            </div>
+                            <span className="text-base mt-0.5">{item.icon}</span>
+                            <span className={`text-sm flex-1 transition ${item.done ? "text-slate-500 line-through" : "text-slate-300"}`}>{item.text}</span>
+                          </button>
                           <button onClick={() => toggleUrgent(idx)} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer ${item.urgent ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-slate-600/30 text-slate-400 border-slate-600/50"}`}>
                             {item.urgent ? "Urgent" : "Normal"}
                           </button>

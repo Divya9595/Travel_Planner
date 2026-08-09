@@ -68,6 +68,7 @@ const tripSchema = new mongoose.Schema(
         text: { type: String },
         icon: { type: String },
         urgent: { type: Boolean, default: false },
+        done: { type: Boolean, default: false },
       },
     ],
     itinerary: {
