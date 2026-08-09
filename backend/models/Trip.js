@@ -74,6 +74,10 @@ const tripSchema = new mongoose.Schema(
     itinerary: {
       type: mongoose.Schema.Types.Mixed,
     },
+    reminderAlertDays: {
+      type: [Number],
+      default: [],
+    },
   },
   { timestamps: true }
 );

@@ -1,4 +1,6 @@
 import Trip from '../models/Trip.js';
+import User from '../models/User.js';
+import { checkAndNotifyTrip } from '../services/notificationService.js';
 
 export const createTrip = async (req, res) => {
   try {
@@ -41,6 +43,13 @@ export const createTrip = async (req, res) => {
       itinerary,
     });
 
+    const user = await User.findById(req.user.id);
+    if (user) {
+      checkAndNotifyTrip(trip, user).catch((err) =>
+        console.error('[notification] createTrip check failed:', err.message)
+      );
+    }
+
     res.status(201).json(trip);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -80,6 +89,16 @@ export const updateTrip = async (req, res) => {
     if (reminders !== undefined) trip.reminders = reminders;
     if (transport !== undefined) trip.transport = transport;
     const updated = await trip.save();
+
+    if (reminders !== undefined) {
+      const user = await User.findById(req.user.id);
+      if (user) {
+        checkAndNotifyTrip(updated, user).catch((err) =>
+          console.error('[notification] updateTrip check failed:', err.message)
+        );
+      }
+    }
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
